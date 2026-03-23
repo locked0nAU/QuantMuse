@@ -87,37 +87,32 @@ class SentimentFactorCalculator:
             return self._create_default_sentiment_factor(symbol)
     
     def _calculate_weighted_sentiment(self, data: pd.DataFrame) -> float:
-        """Calculate weighted sentiment score"""
+        """Calculate weighted sentiment score using vectorized operations"""
         if data.empty:
             return 0.0
         
-        # Weight by confidence and recency
-        weights = []
-        scores = []
+        # Base weight from confidence
+        if 'confidence' in data.columns:
+            confidence = data['confidence']
+        else:
+            confidence = pd.Series(0.5, index=data.index)
         
-        for _, row in data.iterrows():
-            # Base weight from confidence
-            weight = row.get('confidence', 0.5)
+        # Adjust weight by recency (more recent = higher weight)
+        hours_ago = (datetime.now() - data['timestamp']).dt.total_seconds() / 3600
+        recency_weight = np.exp(-hours_ago / 24)
+
+        # Adjust weight by source
+        source_weight = pd.Series(1.0, index=data.index)
+        if 'source' in data.columns:
+            source_weight.loc[data['source'] == 'news'] = 1.2
+            source_weight.loc[data['source'].isin(['twitter', 'reddit'])] = 0.8
             
-            # Adjust weight by recency (more recent = higher weight)
-            hours_ago = (datetime.now() - row['timestamp']).total_seconds() / 3600
-            recency_weight = np.exp(-hours_ago / 24)  # Exponential decay over 24 hours
-            
-            # Adjust weight by source
-            source_weight = 1.0
-            if row.get('source') == 'news':
-                source_weight = 1.2  # News articles get higher weight
-            elif row.get('source') in ['twitter', 'reddit']:
-                source_weight = 0.8  # Social media gets lower weight
-            
-            final_weight = weight * recency_weight * source_weight
-            weights.append(final_weight)
-            scores.append(row['sentiment_score'])
+        final_weights = confidence * recency_weight * source_weight
         
-        if sum(weights) == 0:
+        if final_weights.sum() == 0:
             return 0.0
         
-        return np.average(scores, weights=weights)
+        return np.average(data['sentiment_score'], weights=final_weights)
     
     def _calculate_sentiment_momentum(self, data: pd.DataFrame, lookback_period: int) -> float:
         """Calculate sentiment momentum (change over time)"""
@@ -192,25 +187,23 @@ class SentimentFactorCalculator:
         return symbol_data['sentiment_score'].mean()
     
     def _calculate_confidence(self, data: pd.DataFrame) -> float:
-        """Calculate overall confidence in sentiment analysis"""
+        """Calculate overall confidence in sentiment analysis using vectorized operations"""
         if data.empty:
             return 0.0
         
         # Average confidence weighted by recency
-        weights = []
-        confidences = []
+        hours_ago = (datetime.now() - data['timestamp']).dt.total_seconds() / 3600
+        recency_weights = np.exp(-hours_ago / 24)
         
-        for _, row in data.iterrows():
-            hours_ago = (datetime.now() - row['timestamp']).total_seconds() / 3600
-            recency_weight = np.exp(-hours_ago / 24)
-            
-            weights.append(recency_weight)
-            confidences.append(row.get('confidence', 0.5))
+        if 'confidence' in data.columns:
+            confidences = data['confidence']
+        else:
+            confidences = pd.Series(0.5, index=data.index)
         
-        if sum(weights) == 0:
+        if recency_weights.sum() == 0:
             return 0.0
         
-        return np.average(confidences, weights=weights)
+        return np.average(confidences, weights=recency_weights)
     
     def _create_default_sentiment_factor(self, symbol: str) -> SentimentFactor:
         """Create default sentiment factor when calculation fails"""
