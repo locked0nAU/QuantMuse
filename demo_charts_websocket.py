@@ -11,12 +11,11 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import asyncio
 import pandas as pd
 import numpy as np
-from datetime import datetime, timedelta
 import logging
 
 # 导入我们的模块
 from data_service.visualization import PlotlyChartGenerator
-from data_service.realtime import RealTimeDataFeed, WebSocketClient
+from data_service.realtime import RealTimeDataFeed
 from data_service.factors import FactorCalculator
 
 def setup_logging():
