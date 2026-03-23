@@ -15,6 +15,7 @@ import logging
 from datetime import datetime, timedelta
 import asyncio
 import json
+import os
 
 # Import our trading system modules
 try:
@@ -76,9 +77,12 @@ class APIServer:
         self._initialize_components()
         
         # Setup CORS
+        # In production, specify actual origins. Read from environment variable if available.
+        allowed_origins = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "http://localhost:8000,http://127.0.0.1:8000,http://localhost:3000").split(",")]
+
         self.app.add_middleware(
             CORSMiddleware,
-            allow_origins=["*"],  # In production, specify actual origins
+            allow_origins=allowed_origins,
             allow_credentials=True,
             allow_methods=["*"],
             allow_headers=["*"],

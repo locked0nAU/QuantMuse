@@ -16,9 +16,12 @@ import os
 app = FastAPI(title="Trading System", version="1.0.0")
 
 # Add CORS middleware
+# In production, specify actual origins. Read from environment variable if available.
+allowed_origins = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "http://localhost:8000,http://127.0.0.1:8000,http://localhost:3000").split(",")]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
